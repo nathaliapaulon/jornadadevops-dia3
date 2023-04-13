@@ -8,25 +8,24 @@ terraform {
 }
 
 provider "digitalocean" {
-  token = "dop_v1_f9e3e43a8b93633b870c3ec49b4266d3cb97eaafc9244f31716e08458900e7bf"
+  token = var.do_token
 }
 
 resource "digitalocean_droplet" "jenkins" {
   image  = "ubuntu-22-04-x64"
-  name   = "jenkins-vm"
-  region = "nyc1"
+  name   = "jenkins"
+  region = var.region
   size   = "s-2vcpu-2gb"
-  #   ssh_keys = [data.digitalocean_ssh_key.nath.id]
+     ssh_keys = [data.digitalocean_ssh_key.nath.id]
 }
 
-#data "digitalocean_ssh_key" "nath" {
-#  name = "nath"
-#}
+data "digitalocean_ssh_key" "nath" {
+  name = var.ssh_key_name
+}
 
 resource "digitalocean_kubernetes_cluster" "k8s" {
   name   = "k8s"
-  region = "nyc1"
-  # Grab the latest version slug from `doctl kubernetes options versions`
+  region = var.region
   version = "1.24.4-do.0"
 
   node_pool {
@@ -34,4 +33,25 @@ resource "digitalocean_kubernetes_cluster" "k8s" {
     size       = "s-2vcpu-2gb"
     node_count = 1
   }
+}
+
+variable "do_token" {
+  default = ""
+}
+
+variable "ssh_key_name" {
+  default = ""
+}
+
+variable "region" {
+  default = ""
+}
+
+output "jenkins_ip" {
+  value = digitalocean_droplet.jenkins.ipv4_address
+}
+
+resource "local_file" "foo" {
+  content  = digitalocean_kubernetes_cluster.k8s.kube_config.0.raw_config
+  filename = "kube_config.yaml"
 }
